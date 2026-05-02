@@ -26,11 +26,11 @@ def to_pixel(landmark):
     return int(landmark.x * w), int(landmark.y * h)
 
 
-def get_center(indices, landmarks, w, h):
+def get_center(indices, landmarks):
     points = [to_pixel(landmarks[i]) for i in indices]
-    x = int(np.mean([p[0] for p in points]))
-    y = int(np.mean([p[1] for p in points]))
-    return x, y
+    center_x = int(np.mean([p[0] for p in points]))
+    center_y = int(np.mean([p[1] for p in points]))
+    return center_x, center_y
 
 def start_calibration() -> bool:
     print("Starting calibration...")
@@ -123,9 +123,9 @@ while True:
             y = int(result.face_landmarks[0][landmark].y * h)
             cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
 
-        #left_iris_center_x, left_iris_center_y = get_center(LEFT_IRIS,result.face_landmarks[0], w, h)
-        """cv2.circle(frame, (get_center(LEFT_IRIS,result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)
-        cv2.circle(frame, (get_center(RIGHT_IRIS, result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)"""
+        #left_iris_center_x, left_iris_center_y = get_center(LEFT_IRIS,result.face_landmarks[0])
+        """cv2.circle(frame, (get_center(LEFT_IRIS,result.face_landmarks[0])), 1, (0, 255, 0), -1)
+        cv2.circle(frame, (get_center(RIGHT_IRIS, result.face_landmarks[0])), 1, (0, 255, 0), -1)"""
 
 
     # Show window
@@ -141,7 +141,7 @@ while True:
         top_edge = (left_calibration[0].y + left_calibration[1].y) / 2
         bottom_edge = (left_calibration[2].y + left_calibration[3].y) / 2
 
-        left_iris_x, left_iris_y = get_center(LEFT_IRIS,result.face_landmarks[0], w, h)
+        left_iris_x, left_iris_y = get_center(LEFT_IRIS,result.face_landmarks[0])
         u = (left_iris_x - left_edge)/ (right_edge - left_edge)
         v = (left_iris_y - top_edge)/ (bottom_edge - top_edge)
         """print("eye_x: ", left_iris_x)
@@ -158,9 +158,9 @@ while True:
         break
     elif key == ord("c") and calibrating:
         if result.face_landmarks:
-            x, y = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
+            x, y = get_center(RIGHT_IRIS,result.face_landmarks[0])
             right_calibration.append(Coordinate(x, y))
-            left_x, left_y = get_center(LEFT_IRIS,result.face_landmarks[0], w, h)
+            left_x, left_y = get_center(LEFT_IRIS,result.face_landmarks[0])
             left_calibration.append(Coordinate(left_x, left_y))
             if len(left_calibration) >= 4:
                 calibrating = False
