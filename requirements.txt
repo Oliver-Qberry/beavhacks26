@@ -1,0 +1,4 @@
+pip3 install speech_recognition
+pip3 install rapidfuzz
+pip3 install whisper-local
+pip3 install soundfile
