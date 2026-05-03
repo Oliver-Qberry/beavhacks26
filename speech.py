@@ -56,7 +56,7 @@ def interpret_keyboard(command, flags: Flags) -> None:
         print("'move up/down/left/right' to move the text cursor")
         print("'undo' to undo")
         print("'space', 'escape', 'quote', 'backspace', 'period' to perform corresponding keyboard inputs")
-        print("All other test is written as-is.")
+        print("All other text is written as-is.")
     elif fuzzy_equal(check_command, "enter"):
         keyboard_io.type_char("enter")
     elif fuzzy_equal(check_command, "backspace big") or fuzzy_equal(check_command, "delete word"):

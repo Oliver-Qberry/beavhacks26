@@ -17,16 +17,22 @@ import string
 import controls.mouse as io
 import controls.keyboard as keyboard_io
 
+#what happens when person leaves the frame
 #TODO - eyetracking:
 # mess with smoothing
 # dont recalculate edges every frame
 # dampen effect of eye movement?
+# GET IT TO BE MORE ACCURATE
 # Pyautogui throws error when mouse goes to corner of screen
 
 #TODO - voice commands:
 # add a command that does calibration
 # I cant get the keyboard to type things
 # commands stop working after a few
+#   - shutdown shuts down the speech part, can we get it to do the same with the eye tracking
+#   - It also is getting shutdown as "shut down" - is this an issue?
+# "space" was doing a backspace
+# add arrow keys
 # add quit
 # improve the queue system
 
@@ -58,6 +64,7 @@ EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
 
 # -----Screen size-----
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
+print(SCREEN_WIDTH, SCREEN_HEIGHT)
 
 
 
@@ -66,6 +73,9 @@ DIRECTIONS = ["top left", "top right", "bottom left", "bottom right"]
 
 avg_calibration = []
 
+
+def round_to_5(value: float) -> float:
+    return round(value / 5) * 5
 
 def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     left_edge, right_edge, top_edge, bottom_edge = compute_edges(avg_calibration)
@@ -81,8 +91,10 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     target_x = u * SCREEN_WIDTH
     target_y = v * SCREEN_HEIGHT
 
-    smooth_x = SMOOTHING * target_x + (1 - SMOOTHING) * previous_x
-    smooth_y = SMOOTHING * target_y + (1 - SMOOTHING) * previous_y
+    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
+    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
+    #print("smooth_x: ", smooth_x)
+    #print("smooth_y: ", smooth_y)
     return smooth_x, smooth_y
 
 
@@ -114,8 +126,11 @@ def speech_loop(f: Flags, c_queue) -> None:
                         continue
                     command = "".join(filter(lambda x: x not in string.punctuation, command))
                     c_queue.put(command)
+                    #interpret_command(command, f)
                 else:
                     c_queue.put(command)
+                    #interpret_keyboard(command, f)
+                print("Command: ", command)
 
             except sr.UnknownValueError:
                 print("Didn't get that. Could you say it again?")
