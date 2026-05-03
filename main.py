@@ -21,9 +21,8 @@ import string
 # mess with smoothing
 # dont recalculate edges every frame
 # dampen effect of eye movement?
-# GET IT TO BE MORE ACCURATE
+#   - GET IT TO BE MORE ACCURATE
 # Pyautogui throws error when mouse goes to corner of screen
-# winking isn't working because it sometimes doesnt move the landmarks for closed eyes
 
 #TODO - voice commands:
 # add a command that does calibration
@@ -56,10 +55,10 @@ RIGHT_IRIS = [474, 475, 476, 477]
 LEFT_IRIS = [469, 470, 471, 472]
 LEFT_EYE_CORNERS = [33, 133]
 RIGHT_EYE_CORNERS = [362, 263]
-LEFT_EYE_LIDS = [145, 133]
-RIGHT_EYE_LIDS = [374, 263]
+LEFT_EYE_LIDS = [145, 159] # bottom, top
+RIGHT_EYE_LIDS = [374, 386]
 
-EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
+EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS, LEFT_EYE_LIDS, RIGHT_EYE_LIDS]
 
 # -----Screen size-----
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
@@ -206,7 +205,7 @@ def main() -> None:
             """for landmark in result.face_landmarks[0]:
                 x = int(landmark.x * w)
                 y = int(landmark.y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
+                cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)"""
 
             for l in EYE_MARKERS:
                 for landmark in l:
@@ -231,10 +230,10 @@ def main() -> None:
             for landmark in LEFT_EYE_CORNERS:
                 x = int(result.face_landmarks[0][landmark].x * w)
                 y = int(result.face_landmarks[0][landmark].y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
+                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
 
-            # corners of the right eye
-            for landmark in RIGHT_EYE_CORNERS:
+            # left eyelids
+            """for landmark in LEFT_EYE_LIDS:
                 x = int(result.face_landmarks[0][landmark].x * w)
                 y = int(result.face_landmarks[0][landmark].y * h)
                 cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""

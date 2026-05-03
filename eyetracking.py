@@ -18,12 +18,12 @@ def avg_coords(coord_1: Coordinate, coord_2: Coordinate) -> Coordinate:
 # Calculates the Eye Aspect Ratio (EAR) or how open or closed the eye is, using the provided landmarks
 def calculate_EAR(landmarks, corners, eyelids) -> float:
     left = landmarks[corners[0]]
-    right = landmarks[eyelids[1]]
-    top = landmarks[corners[1]]
+    right = landmarks[corners[1]]
+    top = landmarks[eyelids[1]]
     bottom = landmarks[eyelids[0]]
 
     horizontal = ((left.x - right.x) ** 2 + (left.y - right.y) ** 2) ** 0.5
-    vertical = ((top.x - bottom.x) ** 2 + (top.y - bottom.y) ** 2) ** 0.5
+    vertical = ((top.x - bottom.x) ** 2 + (bottom.y- top.y) ** 2) ** 0.5
     return vertical / horizontal
 
 # Converts a landmark's position in to a position on the camera video
