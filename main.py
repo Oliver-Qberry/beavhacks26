@@ -1,22 +1,15 @@
 import cv2
-import mediapipe as mp
-import numpy as np
 import time
-import os
 import pyautogui
 
 from flags import Flags
-from controls.mouse import left_click, right_click, scroll, move_mouse
-
 from coordinate import Coordinate
-from eyetracking import get_center, compute_edges, create_image, create_detector, start_calibration, to_pixel, calculate_EAR, avg_coords
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+from eyetracking import get_center, compute_edges, create_image, create_detector, start_calibration, calculate_EAR, avg_coords
+from speech import debug_print,interpret_command, interpret_keyboard
+
 
 import speech_recognition as sr
-# Using whisper
 import string
-from rapidfuzz import fuzz
 
 import controls.mouse as io
 import controls.keyboard as io
@@ -75,6 +68,10 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
 def main() -> None:
     flags = Flags()
 
+    command = ""
+    r = sr.Recognizer()
+    r.energy_threshold = 1000  # Cull out some ambient noise
+
     prev_x, prev_y = 0, 0
 
     # --- Load model ---
@@ -90,7 +87,39 @@ def main() -> None:
     flags.calibrating = start_calibration()
 
     # --- Main loop ---
-    while True:
+    while not flags.end_loop:
+        # -----VOICE RECOGNITION-----
+        with sr.Microphone() as source:
+            # r.adjust_for_ambient_noise(source, duration = 0.1)
+            if flags.keyboard:
+                # print("Say something to type")
+                pass
+            else:
+                print("Give command")
+            audio = r.listen(source)
+
+        if not flags.keyboard:
+            debug_print("Heard! interpreting...")
+        try:
+            # command = r.recognize_whisper(audio, language="english")
+            # command = r.recognize_faster_whisper(audio, language="english")
+            # command = r.recognize_sphinx(audio)
+            command = r.recognize_google(audio)
+            if not flags.keyboard:
+                command = command.strip().lower()
+                if command == "":
+                    continue
+                command = "".join(filter(lambda x: x not in string.punctuation, command))
+                interpret_command(command, flags)
+            else:
+                interpret_keyboard(command, flags)
+
+        except sr.UnknownValueError:
+            print("Didn't get that. Could you say it again?")
+        except sr.RequestError as e:
+            print(f"Error: {e}")
+
+        # -----VISION TRACKING-----
         ret, frame = cap.read()
         if not ret:
             break
@@ -159,19 +188,19 @@ def main() -> None:
 
                 both_closed = left_EAR < WINK_THRESHOLD and right_EAR < WINK_THRESHOLD
                 if not both_closed:  # Dont moving during blinking
-                    move_mouse(smooth_x, smooth_y)
+                    io.move_mouse(smooth_x, smooth_y)
 
             # Winking check
             if left_EAR < WINK_THRESHOLD < right_EAR:
                 flags.left_wink_frames += 1
                 if flags.left_wink_frames == WINK_FRAMES_REQUIRED:
                     print("left wink")
-                    left_click()
+                    io.left_click()
             elif left_EAR > WINK_THRESHOLD > right_EAR:
                 flags.right_wink_frames += 1
                 if flags.right_wink_frames == WINK_FRAMES_REQUIRED:
                     print("right wink")
-                    right_click()
+                    io.right_click()
             else:
                 flags.left_wink_frames = 0
                 flags.right_wink_frames = 0
