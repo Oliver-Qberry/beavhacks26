@@ -2,17 +2,37 @@ import cv2
 import time
 import pyautogui
 
+import threading
+import queue
+
 from flags import Flags
 from coordinate import Coordinate
 from eyetracking import get_center, compute_edges, create_image, create_detector, start_calibration, calculate_EAR, avg_coords
-from speech import debug_print,interpret_command, interpret_keyboard
+from speech import debug_print, interpret_command, interpret_keyboard
 
 
 import speech_recognition as sr
 import string
 
 import controls.mouse as io
-import controls.keyboard as io
+import controls.keyboard as keyboard_io
+
+#TODO - eyetracking:
+# mess with smoothing
+# dont recalculate edges every frame
+# dampen effect of eye movement?
+# Pyautogui throws error when mouse goes to corner of screen
+
+#TODO - voice commands:
+# add a command that does calibration
+# I cant get the keyboard to type things
+# commands stop working after a few
+# add quit
+# improve the queue system
+
+#TODO:
+# audio feedback - everything we're printing have it speak
+# better output to the terminal - especially for voice
 
 
 # ------Camera to use-----
@@ -21,6 +41,10 @@ CAMERA = 1
 
 WINK_THRESHOLD = .09
 WINK_FRAMES_REQUIRED = 2
+
+SMOOTHING = 0.3
+
+COMMANDS_PER_FRAME = 3
 
 # -----Eye landmarks -----
 RIGHT_IRIS = [474, 475, 476, 477]
@@ -36,7 +60,6 @@ EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
 
 
-SMOOTHING = 0.5
 
 # -----Calibration-----
 DIRECTIONS = ["top left", "top right", "bottom left", "bottom right"]
@@ -63,14 +86,55 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     return smooth_x, smooth_y
 
 
+def speech_loop(f: Flags, c_queue) -> None:
+    command = ""
+    r = sr.Recognizer()
+    r.energy_threshold = 1000  # Cull out some ambient noise
+    mic = sr.Microphone()
+    with mic as source:
+        # r.adjust_for_ambient_noise(source, duration = 0.1)
+        while not f.end_loop:
+
+            if f.keyboard:
+                print("Say something to type")
+            else:
+                print("Give command")
+            audio = r.listen(source)
+
+            if not f.keyboard:
+                debug_print("Heard! interpreting...")
+            try:
+                # command = r.recognize_whisper(audio, language="english")
+                # command = r.recognize_faster_whisper(audio, language="english")
+                # command = r.recognize_sphinx(audio)
+                command = r.recognize_google(audio)
+                if not f.keyboard:
+                    command = command.strip().lower()
+                    if command == "":
+                        continue
+                    command = "".join(filter(lambda x: x not in string.punctuation, command))
+                    c_queue.put(command)
+                else:
+                    c_queue.put(command)
+
+            except sr.UnknownValueError:
+                print("Didn't get that. Could you say it again?")
+            except sr.RequestError as e:
+                print(f"Error: {e}")
+    return
 
 
 def main() -> None:
     flags = Flags()
 
-    command = ""
-    r = sr.Recognizer()
-    r.energy_threshold = 1000  # Cull out some ambient noise
+    command_queue = queue.Queue()
+
+    speech_thread = threading.Thread(
+        target=speech_loop,
+        args=(flags, command_queue),
+        daemon=True
+    )
+    speech_thread.start()
 
     prev_x, prev_y = 0, 0
 
@@ -87,37 +151,25 @@ def main() -> None:
     flags.calibrating = start_calibration()
 
     # --- Main loop ---
-    while not flags.end_loop:
-        # -----VOICE RECOGNITION-----
-        with sr.Microphone() as source:
-            # r.adjust_for_ambient_noise(source, duration = 0.1)
-            if flags.keyboard:
-                # print("Say something to type")
-                pass
-            else:
-                print("Give command")
-            audio = r.listen(source)
-
-        if not flags.keyboard:
-            debug_print("Heard! interpreting...")
-        try:
-            # command = r.recognize_whisper(audio, language="english")
-            # command = r.recognize_faster_whisper(audio, language="english")
-            # command = r.recognize_sphinx(audio)
-            command = r.recognize_google(audio)
+    while True:
+        # -----Handle voice commands-----
+        for _ in range(COMMANDS_PER_FRAME): # limit commands per frame
+            if command_queue.empty():
+                break
+            command = command_queue.get()
+            #print("Received: ", command)
             if not flags.keyboard:
-                command = command.strip().lower()
-                if command == "":
-                    continue
-                command = "".join(filter(lambda x: x not in string.punctuation, command))
                 interpret_command(command, flags)
             else:
                 interpret_keyboard(command, flags)
+        """while not command_queue.empty():
+            command = command_queue.get()
+            print("Received: ", command)
+            if not flags.keyboard:
+                interpret_command(command, flags)
+            else:
+                interpret_command(command, flags)"""
 
-        except sr.UnknownValueError:
-            print("Didn't get that. Could you say it again?")
-        except sr.RequestError as e:
-            print(f"Error: {e}")
 
         # -----VISION TRACKING-----
         ret, frame = cap.read()
@@ -211,6 +263,7 @@ def main() -> None:
         #Keyboard inputs
         key = cv2.waitKey(1) & 0xFF
         if key == 27: # Quit
+            flags.end_loop = True # to kill speech commands
             break
         elif key == ord("c") and flags.calibrating: #Add calibration point
             if result.face_landmarks:

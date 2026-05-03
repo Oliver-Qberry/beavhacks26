@@ -6,7 +6,7 @@ from rapidfuzz import fuzz
 from flags import Flags
 
 import controls.mouse as io
-import controls.keyboard as io
+import controls.keyboard as keyboard_io
 
 
 def debug_print(text):  # to make enabling/disabling all print functions easy
@@ -58,41 +58,41 @@ def interpret_keyboard(command, flags: Flags) -> None:
         print("'space', 'escape', 'quote', 'backspace', 'period' to perform corresponding keyboard inputs")
         print("All other test is written as-is.")
     elif fuzzy_equal(check_command, "enter"):
-        io.type_char("enter")
+        keyboard_io.type_char("enter")
     elif fuzzy_equal(check_command, "backspace big") or fuzzy_equal(check_command, "delete word"):
-        io.hold_char("ctrl")
-        io.hold_char("command")
-        io.type_char("backspace")
-        io.release_char("ctrl")
-        io.release_char("command")
+        keyboard_io.hold_char("ctrl")
+        keyboard_io.hold_char("command")
+        keyboard_io.type_char("backspace")
+        keyboard_io.release_char("ctrl")
+        keyboard_io.release_char("command")
         print("biggg backspace")
     elif fuzzy_equal(check_command, "backspace") or fuzzy_equal(check_command, "delete"):
-        io.type_char("backspace")
+        keyboard_io.type_char("backspace")
     elif fuzzy_equal(check_command, "space"):
-        io.type_char("space")
+        keyboard_io.type_char("space")
     elif fuzzy_equal(check_command, "move up"):
-        io.type_char("up")
+        keyboard_io.type_char("up")
     elif fuzzy_equal(check_command, "move down"):
-        io.type_char("down")
+        keyboard_io.type_char("down")
     elif fuzzy_equal(check_command, "move left"):
-        io.type_char("left")
+        keyboard_io.type_char("left")
     elif fuzzy_equal(check_command, "move right"):
-        io.type_char("right")
+        keyboard_io.type_char("right")
     elif fuzzy_equal(check_command, "escape") or fuzzy_equal(check_command, "cancel"):
-        io.type_char("escape")
+        keyboard_io.type_char("escape")
     elif fuzzy_equal(check_command, "quote"):
-        io.type("\"")
+        keyboard_io.type("\"")
     elif fuzzy_equal(check_command, "period"):
-        io.type(".")
+        keyboard_io.type(".")
     elif fuzzy_equal(check_command, "undo"):
-        io.hold_char("ctrl")
-        io.hold_char("command")
-        io.type_char("z")
-        io.release_char("ctrl")
-        io.release_char("command")
+        keyboard_io.hold_char("ctrl")
+        keyboard_io.hold_char("command")
+        keyboard_io.type_char("z")
+        keyboard_io.release_char("ctrl")
+        keyboard_io.release_char("command")
     elif fuzzy_equal(check_command, "hold shift"):
-        io.hold_char("shift")
+        keyboard_io.hold_char("shift")
     elif fuzzy_equal(check_command, "release shift"):
-        io.release_char("shift")
+        keyboard_io.release_char("shift")
     else:
-        io.type(command.strip())
+        keyboard_io.type(command.strip())

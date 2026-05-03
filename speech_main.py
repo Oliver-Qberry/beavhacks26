@@ -71,6 +71,7 @@ def interpret_command(command, flags: Flags) -> None:
         io.scroll(-10)
     elif fuzzy_equal(command, "keyboard") or fuzzy_equal(command, "open keyboard"):
         flags.keyboard = True
+        print(f"Keyboard is enabled: {flags.keyboard}")
     elif fuzzy_equal(command, "help"):
         print("'left' or 'click' to left click")
         print("'right' to right click")

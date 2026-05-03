@@ -12,6 +12,8 @@ from coordinate import Coordinate
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+
+
 # ------Camera to use-----
 # 0 for iphone camera, 1 for laptop webcam
 CAMERA = 1
