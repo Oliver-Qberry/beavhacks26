@@ -1,3 +1,4 @@
+opencv-python
 absl-py==2.4.0
 audioop-lts==0.2.2
 certifi==2026.4.22

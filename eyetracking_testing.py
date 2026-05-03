@@ -128,6 +128,8 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     smooth_y = SMOOTHING * target_y + (1 - SMOOTHING) * previous_y
     return smooth_x, smooth_y
 
+
+
 def main() -> None:
     flags = Flags()
 
@@ -219,8 +221,8 @@ def main() -> None:
 
             # Winking check
             if left_EAR < WINK_THRESHOLD < right_EAR:
-                flags.wink_frames += 1
-                if flags.wink_frames == WINK_FRAMES_REQUIRED:
+                flags.left_wink_frames += 1
+                if flags.left_wink_frames == WINK_FRAMES_REQUIRED:
                     print("left wink")
                     left_click()
             elif left_EAR > WINK_THRESHOLD > right_EAR:
@@ -229,7 +231,7 @@ def main() -> None:
                     print("right wink")
                     right_click()
             else:
-                flags.wink_frames = 0
+                flags.left_wink_frames = 0
                 flags.right_wink_frames = 0
 
         # Show window
