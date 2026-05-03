@@ -21,17 +21,23 @@ def fuzzy_equal(command, key) -> bool:
 
 
 def interpret_command(command, flags: Flags) -> None:
-    if fuzzy_equal(command, "shutdown") or fuzzy_equal(command, "exit") or fuzzy_equal(command, "close"):
+    print(f"Heard \"{command}\"")
+    if fuzzy_equal(command, "shut down") or fuzzy_equal(command, "exit") or fuzzy_equal(command, "close"):
         flags.end_loop = True
     elif fuzzy_equal(command, "left") or fuzzy_equal(command, "click"):
+        print("Clicking left mouse button")
         io.left_click()
     elif fuzzy_equal(command, "right"):
+        print("Clicking right mouse button")
         io.right_click()
     elif fuzzy_equal(command, "scroll up"):
+        print("Scrolling up")
         io.scroll(10)
     elif fuzzy_equal(command, "scroll down"):
+        print("Scrolling down")
         io.scroll(-10)
     elif fuzzy_equal(command, "keyboard") or fuzzy_equal(command, "open keyboard"):
+        print("Opening keyboard")
         flags.keyboard = True
     elif fuzzy_equal(command, "help"):
         print("'left' or 'click' to left click")
