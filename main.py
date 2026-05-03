@@ -43,7 +43,7 @@ import string
 # 0 for iphone camera, 1 for laptop webcam
 CAMERA = 1
 
-WINK_THRESHOLD = .12
+WINK_THRESHOLD = .09
 WINK_FRAMES_REQUIRED = 2
 
 SMOOTHING = 0.3
@@ -68,6 +68,9 @@ pyautogui.FAILSAFE = False
 # -----Calibration-----
 DIRECTIONS = ["top left", "top right", "bottom left", "bottom right"]
 avg_calibration = []
+right_calibration = []
+left_calibration = []
+
 
 
 def round_to_5(value: float) -> float:
@@ -80,6 +83,43 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
     u = ((lx + rx) / 2 - left_edge) / (right_edge - left_edge)
     v = ((ly + ry) / 2 - top_edge) / (bottom_edge - top_edge)
+    # Clamp values
+    u = max(0, min(1, u))
+    v = max(0, min(1, v))
+
+    target_x = round(u * SCREEN_WIDTH)
+    target_y = round(v * SCREEN_HEIGHT)
+
+    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
+    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
+    return smooth_x, smooth_y
+
+def calculate_left_smoothed_position(landmarks, previous_x, previous_y, w, h):
+    left_edge, right_edge, top_edge, bottom_edge = compute_edges(left_calibration)
+
+    lx, ly = get_center(LEFT_IRIS, landmarks[0], w, h)
+    #rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
+    u = (lx - left_edge) / (right_edge - left_edge)
+    v = (ly - top_edge) / (bottom_edge - top_edge)
+    # Clamp values
+    u = max(0, min(1, u))
+    v = max(0, min(1, v))
+
+    target_x = round(u * SCREEN_WIDTH)
+    target_y = round(v * SCREEN_HEIGHT)
+
+    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
+    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
+    return smooth_x, smooth_y
+
+def calculate_right_smoothed_position(landmarks, previous_x, previous_y, w, h):
+    left_edge, right_edge, top_edge, bottom_edge = compute_edges(right_calibration)
+
+    #lx, ly = get_center(LEFT_IRIS, landmarks[0], w, h)
+    rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
+    u = (rx - left_edge) / (right_edge - left_edge)
+    v = (ry - top_edge) / (bottom_edge - top_edge)
+    # Clamp values
     # Clamp values
     u = max(0, min(1, u))
     v = max(0, min(1, v))
@@ -247,12 +287,19 @@ def main() -> None:
             right_EAR = calculate_EAR(result.face_landmarks[0], RIGHT_EYE_CORNERS, RIGHT_EYE_LIDS)
             # Convert eye position to screen position
             if len(avg_calibration) == 4 and not flags.calibrating:
-                smooth_x, smooth_y = calculate_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
-                prev_x, prev_y = smooth_x, smooth_y
-
                 both_closed = left_EAR < WINK_THRESHOLD and right_EAR < WINK_THRESHOLD
+                smooth_x, smooth_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
                 if not both_closed:  # Dont moving during blinking
+                    smooth_x, smooth_y = calculate_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
+                elif left_EAR < WINK_THRESHOLD and right_EAR > WINK_THRESHOLD:
+                    smooth_x, smooth_y = calculate_right_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
+                elif left_EAR > WINK_THRESHOLD and right_EAR < WINK_THRESHOLD:
+                    smooth_x, smooth_y = calculate_right_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
+
+                if not both_closed:
+                    prev_x, prev_y = smooth_x, smooth_y
                     io.move_mouse(smooth_x, smooth_y)
+
 
             # Winking check
             if left_EAR < WINK_THRESHOLD < right_EAR:
@@ -281,14 +328,14 @@ def main() -> None:
             if result.face_landmarks:
                 x, y = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
                 right_cord = Coordinate(x, y)
+                right_calibration.append(right_cord)
                 left_x, left_y = get_center(LEFT_IRIS,result.face_landmarks[0],w, h)
                 left_cord = Coordinate(left_x, left_y)
+                left_calibration.append(left_cord)
                 avg_calibration.append(avg_coords(left_cord, right_cord))
                 if len(avg_calibration) >= 4:
                     flags.calibrating = False
                     print("Done calibrating")
-                    """for coordinate in left_calibration:
-                        coordinate.print()"""
                 else:
                     print(f"And now please look to the {DIRECTIONS[len(avg_calibration)]}")
             else:
