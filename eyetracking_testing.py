@@ -5,6 +5,7 @@ import time
 import os
 import pyautogui
 
+from flags import Flags
 from controls.mouse import left_click, right_click, scroll, move_mouse
 
 from coordinate import Coordinate
@@ -68,8 +69,7 @@ def input_handling(key):
 
 
 def main() -> None:
-    winking = False
-    calibrating = False
+    flags = Flags()
     # --- Load model ---
     model_path = os.path.join(os.path.dirname(__file__), "face_landmarker.task")
 
@@ -82,6 +82,7 @@ def main() -> None:
     )
 
     detector = vision.FaceLandmarker.create_from_options(options)
+    print(type(detector))
 
     # --- Webcam ---
     cap = cv2.VideoCapture(CAMERA)
@@ -90,7 +91,7 @@ def main() -> None:
         print("Error: Could not open webcam")
         exit()
 
-    calibrating = start_calibration()
+    flags.calibrating = start_calibration()
 
     # --- Main loop ---
     while True:
@@ -171,10 +172,10 @@ def main() -> None:
         # Show window
         cv2.imshow("Face Landmarker", frame)
 
-        if not calibrating and len(left_calibration) == 0:
-            print(f"calibrating: {calibrating}")
-            #calibrating = start_calibration()
-        elif len(left_calibration) != 0 and not calibrating:
+        if not flags.calibrating and len(left_calibration) == 0:
+            print(f"calibrating: {flags.calibrating}")
+            #flags.calibrating = start_calibration()
+        elif len(left_calibration) != 0 and not flags.calibrating:
             left_edge = ((left_calibration[0].x) + (left_calibration[2].x)) / 2
             right_edge = ((left_calibration[1].x) + left_calibration[3].x) / 2
 
@@ -189,30 +190,30 @@ def main() -> None:
         left_EAR = calculate_EAR(result.face_landmarks[0], 33, 159, 145, 133)
         right_EAR = calculate_EAR(result.face_landmarks[0], 362, 386, 374, 263)
         #FIXME: flag resets if you open one eye
-        if left_EAR < WINK_THRESHOLD < right_EAR and not winking:
-            winking = True
+        if left_EAR < WINK_THRESHOLD < right_EAR and not flags.winking:
+            flags.winking = True
             print("left wink")
             left_click()
-        elif left_EAR > WINK_THRESHOLD > right_EAR and not winking:
-            winking = True
+        elif left_EAR > WINK_THRESHOLD > right_EAR and not flags.winking:
+            flags.winking = True
             print("right wink")
             right_click()
         else:
-            winking = False
+            flags.winking = False
 
 
         key = cv2.waitKey(1) & 0xFF
         # Press ESC to quit
         if key == 27:
             break
-        elif key == ord("c") and calibrating:
+        elif key == ord("c") and flags.calibrating:
             if result.face_landmarks:
                 x, y = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
                 right_calibration.append(Coordinate(x, y))
                 left_x, left_y = get_center(LEFT_IRIS,result.face_landmarks[0],w, h)
                 left_calibration.append(Coordinate(left_x, left_y))
                 if len(left_calibration) >= 4:
-                    calibrating = False
+                    flags.calibrating = False
                     print("Done calibrating")
                     """for coordinate in left_calibration:
                         coordinate.print()"""

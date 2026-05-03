@@ -3,16 +3,11 @@ import speech_recognition as sr
 import os
 import string
 from rapidfuzz import fuzz
+from flags import Flags
 
 import controls.mouse as io
 import controls.keyboard as io
 
-class Flags():
-    end_loop = False
-    keyboard = False
-    
-    def __init__(self):
-        pass
 
 def main() -> None:
     command = ""
