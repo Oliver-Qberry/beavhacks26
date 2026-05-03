@@ -29,7 +29,6 @@ import string
 # add a command that does calibration
 # I cant get the keyboard to type things
 # commands stop working after a few
-#   - shutdown shuts down the speech part, can we get it to do the same with the eye tracking
 #   - It also is getting shutdown as "shut down" - is this an issue?
 # "space" was doing a backspace
 # add arrow keys
@@ -37,7 +36,7 @@ import string
 # improve the queue system
 
 #TODO:
-# audio feedback - everything we're printing have it speak
+# audio feedback - everything we're printing have it speak?
 # better output to the terminal - especially for voice
 
 
@@ -64,13 +63,10 @@ EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
 
 # -----Screen size-----
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
-print(SCREEN_WIDTH, SCREEN_HEIGHT)
-
 
 
 # -----Calibration-----
 DIRECTIONS = ["top left", "top right", "bottom left", "bottom right"]
-
 avg_calibration = []
 
 
@@ -164,7 +160,7 @@ def main() -> None:
     flags.calibrating = start_calibration()
 
     # --- Main loop ---
-    while True:
+    while not flags.end_loop:
         # -----Handle voice commands-----
         for _ in range(COMMANDS_PER_FRAME): # limit commands per frame
             if command_queue.empty():
