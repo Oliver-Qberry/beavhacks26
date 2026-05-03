@@ -1,29 +1,29 @@
+# Used for eye tracking
 import cv2
 import time
 import pyautogui
 
+# Our custom modules
+from flags import Flags
+import controls.mouse as io
+from coordinate import Coordinate
+from speech import debug_print, interpret_command, interpret_keyboard
+from eyetracking import get_center, compute_edges, create_image, create_detector, start_calibration, calculate_EAR, avg_coords
+
+# Use for speech commands
+import speech_recognition as sr
 import threading
 import queue
-
-from flags import Flags
-from coordinate import Coordinate
-from eyetracking import get_center, compute_edges, create_image, create_detector, start_calibration, calculate_EAR, avg_coords
-from speech import debug_print, interpret_command, interpret_keyboard
-
-
-import speech_recognition as sr
 import string
 
-import controls.mouse as io
-import controls.keyboard as keyboard_io
 
-#what happens when person leaves the frame
 #TODO - eyetracking:
 # mess with smoothing
 # dont recalculate edges every frame
 # dampen effect of eye movement?
 # GET IT TO BE MORE ACCURATE
 # Pyautogui throws error when mouse goes to corner of screen
+# winking isn't working because it sometimes doesnt move the landmarks for closed eyes
 
 #TODO - voice commands:
 # add a command that does calibration
@@ -45,7 +45,7 @@ import controls.keyboard as keyboard_io
 # 0 for iphone camera, 1 for laptop webcam
 CAMERA = 1
 
-WINK_THRESHOLD = .09
+WINK_THRESHOLD = .12
 WINK_FRAMES_REQUIRED = 2
 
 SMOOTHING = 0.3
@@ -88,13 +88,11 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     u = max(0, min(1, u))
     v = max(0, min(1, v))
 
-    target_x = u * SCREEN_WIDTH
-    target_y = v * SCREEN_HEIGHT
+    target_x = round(u * SCREEN_WIDTH)
+    target_y = round(v * SCREEN_HEIGHT)
 
     smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
     smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
-    #print("smooth_x: ", smooth_x)
-    #print("smooth_y: ", smooth_y)
     return smooth_x, smooth_y
 
 
