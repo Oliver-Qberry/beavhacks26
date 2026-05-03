@@ -63,6 +63,7 @@ EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
 
 # -----Screen size-----
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
+pyautogui.FAILSAFE = False
 
 
 # -----Calibration-----
@@ -143,7 +144,6 @@ def main() -> None:
         args=(flags, command_queue),
         daemon=True
     )
-    speech_thread.start()
 
     prev_x, prev_y = 0, 0
 
@@ -159,9 +159,13 @@ def main() -> None:
 
     flags.calibrating = start_calibration()
 
+    started_speech_thread = False
     # --- Main loop ---
     while not flags.end_loop:
         # -----Handle voice commands-----
+        if not flags.calibrating and not started_speech_thread:
+            speech_thread.start()
+            started_speech_thread = True
         for _ in range(COMMANDS_PER_FRAME): # limit commands per frame
             if command_queue.empty():
                 break
