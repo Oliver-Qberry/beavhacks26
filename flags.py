@@ -1,7 +1,8 @@
 class Flags:
     end_loop = False
     keyboard = False
-    winking = False
+    wink_frames = 0
+    right_wink_frames = 0
     calibrating = False
 
     def __init__(self):

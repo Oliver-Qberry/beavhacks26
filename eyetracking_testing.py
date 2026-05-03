@@ -16,7 +16,8 @@ from mediapipe.tasks.python import vision
 # 0 for iphone camera, 1 for laptop webcam
 CAMERA = 1
 
-WINK_THRESHOLD = 0.09
+WINK_THRESHOLD = .09
+WINK_FRAMES_REQUIRED = 2
 
 # -----Eye landmarks -----
 RIGHT_IRIS = [474, 475, 476, 477]
@@ -30,11 +31,21 @@ EYE_MARKERS = [RIGHT_IRIS, LEFT_IRIS, LEFT_EYE_CORNERS, RIGHT_EYE_CORNERS]
 SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
 
 
+SMOOTHING = 0.5
+
 # -----Calibration-----
 DIRECTIONS = ["top left", "top right", "bottom left", "bottom right"]
 
 left_calibration = []
 right_calibration = []
+avg_calibration = []
+
+
+def avg_coords(coord_1: Coordinate, coord_2: Coordinate) -> Coordinate:
+    x_avg = (coord_1.x + coord_2.x) / 2
+    y_avg = (coord_1.y + coord_2.y) / 2
+    return Coordinate(x_avg, y_avg)
+
 
 # Calculates the Eye Aspect Ratio (EAR) or how open or closed the eye is, using the provided landmarks
 def calculate_EAR(landmarks, p1: int, p2: int, p3: int, p4:int) -> float:
@@ -67,10 +78,7 @@ def start_calibration() -> bool:
 def input_handling(key):
     pass
 
-
-def main() -> None:
-    flags = Flags()
-    # --- Load model ---
+def create_detector():
     model_path = os.path.join(os.path.dirname(__file__), "face_landmarker.task")
 
     base_options = python.BaseOptions(model_asset_path=model_path)
@@ -81,7 +89,24 @@ def main() -> None:
         num_faces=1
     )
 
-    detector = vision.FaceLandmarker.create_from_options(options)
+    return vision.FaceLandmarker.create_from_options(options)
+
+def create_image(frame):
+    # Convert BGR → RGB
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # Convert to MediaPipe Image
+    return mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=rgb_frame
+    )
+
+def main() -> None:
+    prev_x, prev_y = 0, 0
+    flags = Flags()
+
+    # --- Load model ---
+    detector = create_detector()
     print(type(detector))
 
     # --- Webcam ---
@@ -103,20 +128,11 @@ def main() -> None:
         frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
 
-        # Convert BGR → RGB
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Convert to MediaPipe Image
-        mp_image = mp.Image(
-            image_format=mp.ImageFormat.SRGB,
-            data=rgb_frame
-        )
-
         # Timestamp in milliseconds
         timestamp = int(time.time() * 1000)
 
         # Run detection
-        result = detector.detect_for_video(mp_image, timestamp)
+        result = detector.detect_for_video(create_image(frame), timestamp)
 
         # --- Draw landmarks ---
         if result.face_landmarks:
@@ -159,47 +175,66 @@ def main() -> None:
                 y = int(result.face_landmarks[0][landmark].y * h)
                 cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
 
-            #left_iris_center_x, left_iris_center_y = get_center(LEFT_IRIS,result.face_landmarks[0])
+            #center of eyes
             cv2.circle(frame, (get_center(LEFT_IRIS,result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)
             cv2.circle(frame, (get_center(RIGHT_IRIS, result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)
 
-            #if result.face_landmarks[0][159].x - result.face_landmarks[0][145].x <:
-            cv2.circle(frame, (int(result.face_landmarks[0][159].x * w), int(result.face_landmarks[0][159].y * h)), 1, (0, 255, 0), -1)
-            cv2.circle(frame, (int(result.face_landmarks[0][145].x * w), int(result.face_landmarks[0][145].y * h)), 1, (0, 255, 0), -1)
-            #print(f"Left eyelid distance: {result.face_landmarks[0][159].x - result.face_landmarks[0][145].x}")
+            # left eyelid points
+            #cv2.circle(frame, (int(result.face_landmarks[0][159].x * w), int(result.face_landmarks[0][159].y * h)), 1, (0, 255, 0), -1)
+            #cv2.circle(frame, (int(result.face_landmarks[0][145].x * w), int(result.face_landmarks[0][145].y * h)), 1, (0, 255, 0), -1)
 
 
         # Show window
         cv2.imshow("Face Landmarker", frame)
 
-        if not flags.calibrating and len(left_calibration) == 0:
+        # Convert eye position to screen position
+        if not flags.calibrating and len(avg_calibration) == 0:
             print(f"calibrating: {flags.calibrating}")
-            #flags.calibrating = start_calibration()
-        elif len(left_calibration) != 0 and not flags.calibrating:
-            left_edge = ((left_calibration[0].x) + (left_calibration[2].x)) / 2
-            right_edge = ((left_calibration[1].x) + left_calibration[3].x) / 2
+        elif len(avg_calibration) != 0 and not flags.calibrating:
+            left_edge = ((avg_calibration[0].x) + (avg_calibration[2].x)) / 2
+            right_edge = ((avg_calibration[1].x) + avg_calibration[3].x) / 2
 
-            top_edge = (left_calibration[0].y + left_calibration[1].y) / 2
-            bottom_edge = (left_calibration[2].y + left_calibration[3].y) / 2
+            top_edge = (avg_calibration[0].y + avg_calibration[1].y) / 2
+            bottom_edge = (avg_calibration[2].y + avg_calibration[3].y) / 2
 
-            left_iris_x, left_iris_y = get_center(LEFT_IRIS,result.face_landmarks[0], w, h)
-            u = (left_iris_x - left_edge)/ (right_edge - left_edge)
-            v = (left_iris_y - top_edge)/ (bottom_edge - top_edge)
+            lx, ly = get_center(LEFT_IRIS,result.face_landmarks[0], w, h)
+            rx, ry = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
+            u = ((lx + rx) / 2 - left_edge) / (right_edge - left_edge)
+            v = ((ly + ry) / 2 - top_edge) / (bottom_edge - top_edge)
+            # Clamp values
+            u = max(0, min(1, u))
+            v = max(0, min(1, v))
 
-            move_mouse(u * SCREEN_WIDTH, v * SCREEN_HEIGHT)
-        left_EAR = calculate_EAR(result.face_landmarks[0], 33, 159, 145, 133)
-        right_EAR = calculate_EAR(result.face_landmarks[0], 362, 386, 374, 263)
-        #FIXME: flag resets if you open one eye
-        if left_EAR < WINK_THRESHOLD < right_EAR and not flags.winking:
-            flags.winking = True
-            print("left wink")
-            left_click()
-        elif left_EAR > WINK_THRESHOLD > right_EAR and not flags.winking:
-            flags.winking = True
-            print("right wink")
-            right_click()
-        else:
-            flags.winking = False
+            target_x = u * SCREEN_WIDTH
+            target_y = v * SCREEN_HEIGHT
+
+            smooth_x = SMOOTHING * target_x + (1-SMOOTHING) * prev_x
+            smooth_y = SMOOTHING * target_y + (1-SMOOTHING) * prev_y
+            prev_x, prev_y = smooth_x, smooth_y
+
+            left_EAR = calculate_EAR(result.face_landmarks[0], 33, 159, 145, 133)
+            right_EAR = calculate_EAR(result.face_landmarks[0], 362, 386, 374, 263)
+            both_closed = left_EAR < WINK_THRESHOLD and right_EAR < WINK_THRESHOLD
+            if not both_closed: # Dont moving during blinking
+                move_mouse(smooth_x, smooth_y)
+        #TODO: this if statement is redundant
+        if result.face_landmarks:
+            left_EAR = calculate_EAR(result.face_landmarks[0], 33, 159, 145, 133)
+            right_EAR = calculate_EAR(result.face_landmarks[0], 362, 386, 374, 263)
+            #FIXME: flag resets if you open one eye
+            if left_EAR < WINK_THRESHOLD < right_EAR:
+                flags.wink_frames += 1
+                if flags.wink_frames == WINK_FRAMES_REQUIRED:
+                    print("left wink")
+                    left_click()
+            elif left_EAR > WINK_THRESHOLD > right_EAR:
+                flags.right_wink_frames += 1
+                if flags.right_wink_frames == WINK_FRAMES_REQUIRED:
+                    print("right wink")
+                    right_click()
+            else:
+                flags.wink_frames = 0
+                flags.right_wink_frames = 0
 
 
         key = cv2.waitKey(1) & 0xFF
@@ -209,16 +244,19 @@ def main() -> None:
         elif key == ord("c") and flags.calibrating:
             if result.face_landmarks:
                 x, y = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
-                right_calibration.append(Coordinate(x, y))
+                right_cord = Coordinate(x, y)
+                right_calibration.append(right_cord)
                 left_x, left_y = get_center(LEFT_IRIS,result.face_landmarks[0],w, h)
-                left_calibration.append(Coordinate(left_x, left_y))
-                if len(left_calibration) >= 4:
+                left_cord = Coordinate(left_x, left_y)
+                left_calibration.append(left_cord)
+                avg_calibration.append(avg_coords(left_cord, right_cord))
+                if len(avg_calibration) >= 4:
                     flags.calibrating = False
                     print("Done calibrating")
                     """for coordinate in left_calibration:
                         coordinate.print()"""
                 else:
-                    print(f"And now please look to the {DIRECTIONS[len(left_calibration)]}")
+                    print(f"And now please look to the {DIRECTIONS[len(avg_calibration)]}")
             else:
                 print("Failed that calibration, please try again")
 
