@@ -1,4 +1,5 @@
 import pyautogui
+import string
 
 def type(text) -> None:
     pyautogui.write(text)
