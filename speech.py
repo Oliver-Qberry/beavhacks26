@@ -22,7 +22,7 @@ def fuzzy_equal(command, key) -> bool:
 
 def interpret_command(command, flags: Flags) -> None:
     print(f"Heard \"{command}\"")
-    if fuzzy_equal(command, "shut down") or fuzzy_equal(command, "exit") or fuzzy_equal(command, "close"):
+    if fuzzy_equal(command, "shut down") or fuzzy_equal(command, "exit") or fuzzy_equal(command, "close") or fuzzy_equal(command, "quit"):
         flags.end_loop = True
     elif fuzzy_equal(command, "left") or fuzzy_equal(command, "click"):
         print("Clicking left mouse button")

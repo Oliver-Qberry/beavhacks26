@@ -16,23 +16,22 @@ import threading
 import queue
 import string
 
+# Future improvements
+# More verbal commands
+# Track head to better stabilize mouse movement and remove need for calibration
+# Make calibration a verbal command option
+# Add audio feedback
+
 
 #TODO - eyetracking:
-# mess with smoothing
-# dont recalculate edges every frame
 # dampen effect of eye movement?
 #   - GET IT TO BE MORE ACCURATE
-# Pyautogui throws error when mouse goes to corner of screen
+# dont recalculate edges every frame
 
 #TODO - voice commands:
 # add a command that does calibration
-# I cant get the keyboard to type things
-# commands stop working after a few
-#   - It also is getting shutdown as "shut down" - is this an issue?
 # "space" was doing a backspace
 # add arrow keys
-# add quit
-# improve the queue system
 
 #TODO:
 # audio feedback - everything we're printing have it speak?
@@ -72,10 +71,23 @@ right_calibration = []
 left_calibration = []
 
 
-
+# Round value to nearest multiple of 5
 def round_to_5(value: float) -> float:
     return round(value / 5) * 5
 
+# Smooth out position mouse is moving towards
+def smooth(u, v, prev_x, prev_y):
+    u = max(0, min(1, u))
+    v = max(0, min(1, v))
+
+    target_x = round(u * SCREEN_WIDTH)
+    target_y = round(v * SCREEN_HEIGHT)
+
+    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * prev_x)
+    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * prev_y)
+    return smooth_x, smooth_y
+
+# Calculate the smoothed mouse position using both eyes
 def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     left_edge, right_edge, top_edge, bottom_edge = compute_edges(avg_calibration)
 
@@ -83,55 +95,31 @@ def calculate_smoothed_position(landmarks, previous_x, previous_y, w, h):
     rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
     u = ((lx + rx) / 2 - left_edge) / (right_edge - left_edge)
     v = ((ly + ry) / 2 - top_edge) / (bottom_edge - top_edge)
-    # Clamp values
-    u = max(0, min(1, u))
-    v = max(0, min(1, v))
 
-    target_x = round(u * SCREEN_WIDTH)
-    target_y = round(v * SCREEN_HEIGHT)
+    return smooth(u, v, previous_x, previous_y)
 
-    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
-    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
-    return smooth_x, smooth_y
-
+# Calculate smoothed mouse position using the left eye
 def calculate_left_smoothed_position(landmarks, previous_x, previous_y, w, h):
     left_edge, right_edge, top_edge, bottom_edge = compute_edges(left_calibration)
 
     lx, ly = get_center(LEFT_IRIS, landmarks[0], w, h)
-    #rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
+
     u = (lx - left_edge) / (right_edge - left_edge)
     v = (ly - top_edge) / (bottom_edge - top_edge)
-    # Clamp values
-    u = max(0, min(1, u))
-    v = max(0, min(1, v))
 
-    target_x = round(u * SCREEN_WIDTH)
-    target_y = round(v * SCREEN_HEIGHT)
+    return smooth(u,v,previous_x,previous_y)
 
-    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
-    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
-    return smooth_x, smooth_y
-
+# Calculate smoothed mouse position using the right eye
 def calculate_right_smoothed_position(landmarks, previous_x, previous_y, w, h):
     left_edge, right_edge, top_edge, bottom_edge = compute_edges(right_calibration)
 
-    #lx, ly = get_center(LEFT_IRIS, landmarks[0], w, h)
     rx, ry = get_center(RIGHT_IRIS, landmarks[0], w, h)
     u = (rx - left_edge) / (right_edge - left_edge)
     v = (ry - top_edge) / (bottom_edge - top_edge)
-    # Clamp values
-    # Clamp values
-    u = max(0, min(1, u))
-    v = max(0, min(1, v))
 
-    target_x = round(u * SCREEN_WIDTH)
-    target_y = round(v * SCREEN_HEIGHT)
+    return smooth(u,v,previous_x,previous_y)
 
-    smooth_x = round_to_5(SMOOTHING * target_x + (1 - SMOOTHING) * previous_x)
-    smooth_y = round_to_5(SMOOTHING * target_y + (1 - SMOOTHING) * previous_y)
-    return smooth_x, smooth_y
-
-
+# Main loop for getting verbal commands
 def speech_loop(f: Flags, c_queue) -> None:
     command = ""
     r = sr.Recognizer()
@@ -196,31 +184,26 @@ def main() -> None:
         print("Error: Could not open webcam")
         exit()
 
+    # Start calibration
     flags.calibrating = start_calibration()
 
     started_speech_thread = False
     # --- Main loop ---
     while not flags.end_loop:
         # -----Handle voice commands-----
+        # Start getting verbal input after calibration has happened
         if not flags.calibrating and not started_speech_thread:
             speech_thread.start()
             started_speech_thread = True
+        #
         for _ in range(COMMANDS_PER_FRAME): # limit commands per frame
             if command_queue.empty():
                 break
             command = command_queue.get()
-            #print("Received: ", command)
             if not flags.keyboard:
                 interpret_command(command, flags)
             else:
                 interpret_keyboard(command, flags)
-        """while not command_queue.empty():
-            command = command_queue.get()
-            print("Received: ", command)
-            if not flags.keyboard:
-                interpret_command(command, flags)
-            else:
-                interpret_command(command, flags)"""
 
 
         # -----VISION TRACKING-----
