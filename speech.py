@@ -1,6 +1,3 @@
-import speech_recognition as sr
-# Using whisper
-import os
 import string
 from rapidfuzz import fuzz
 from flags import Flags
@@ -13,13 +10,13 @@ def debug_print(text):  # to make enabling/disabling all print functions easy
     print(text)
     pass
 
-
+# use rapidfuzz to see if the given command is close to the command (key) that it's checking against
 def fuzzy_equal(command, key) -> bool:
     acceptable_ratio = 70
     actual_ratio = fuzz.ratio(command, key)
     return actual_ratio > acceptable_ratio
 
-
+# check if the spoken text is a command we have and then trigger that commands effects
 def interpret_command(command, flags: Flags) -> None:
     print(f"Heard \"{command}\"")
     if fuzzy_equal(command, "shut down") or fuzzy_equal(command, "exit") or fuzzy_equal(command, "close") or fuzzy_equal(command, "quit"):
@@ -50,7 +47,7 @@ def interpret_command(command, flags: Flags) -> None:
     else:
         debug_print("Unknown command: \"" + command + "\"")
 
-
+# when typing, type the words that are spoken unless it's a specific phrase that does something else
 def interpret_keyboard(command, flags: Flags) -> None:
     check_command = command.strip().lower()
     check_command = "".join(filter(lambda x: x not in string.punctuation, check_command))
@@ -72,7 +69,7 @@ def interpret_keyboard(command, flags: Flags) -> None:
         keyboard_io.release_char("ctrl")
         keyboard_io.release_char("command")
         print("biggg backspace")
-    elif fuzzy_equal(check_command, "backspace") or fuzzy_equal(check_command, "delete"):
+    elif fuzzy_equal(check_command, "delete"):
         keyboard_io.type_char("backspace")
     elif fuzzy_equal(check_command, "space"):
         keyboard_io.type_char("space")

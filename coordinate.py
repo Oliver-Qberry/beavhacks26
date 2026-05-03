@@ -1,3 +1,4 @@
+# A coordinate object that holds an x and y value
 class Coordinate:
     x: int
     y: int

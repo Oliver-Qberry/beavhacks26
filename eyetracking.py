@@ -8,7 +8,7 @@ from mediapipe.tasks.python import vision
 
 from coordinate import Coordinate
 
-
+# Return the average of two coordinate points
 def avg_coords(coord_1: Coordinate, coord_2: Coordinate) -> Coordinate:
     x_avg = (coord_1.x + coord_2.x) / 2
     y_avg = (coord_1.y + coord_2.y) / 2
@@ -37,11 +37,13 @@ def get_center(indices, landmarks, w, h):
     center_y = int(np.mean([p[1] for p in points]))
     return center_x, center_y
 
+# Start the calibration sequence
 def start_calibration() -> bool:
     print("Starting calibration...")
     print("Please look to the top left")
     return True
 
+# Create the facial landmark detector
 def create_detector():
     model_path = os.path.join(os.path.dirname(__file__), "face_landmarker.task")
 
@@ -55,6 +57,7 @@ def create_detector():
 
     return vision.FaceLandmarker.create_from_options(options)
 
+# Create the image from the frame
 def create_image(frame):
     # Convert BGR → RGB
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -65,7 +68,7 @@ def create_image(frame):
         data=rgb_frame
     )
 
-
+# Use calibration values to determin where the edges of the screen are
 def compute_edges(avg_calibration):
     l_edge = ((avg_calibration[0].x) + (avg_calibration[2].x)) / 2
     r_edge = ((avg_calibration[1].x) + avg_calibration[3].x) / 2

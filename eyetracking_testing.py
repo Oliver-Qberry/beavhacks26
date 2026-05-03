@@ -1,3 +1,6 @@
+# This is the original eye tracking file that was used for
+# testing a development before integrating with verbal commands
+
 import cv2
 import mediapipe as mp
 import numpy as np

@@ -40,9 +40,11 @@ import string
 
 # ------Camera to use-----
 # 0 for iphone camera, 1 for laptop webcam
+# If you get "Error: Could not open webcam"
+# Switch CAMERA to 0
 CAMERA = 1
 
-WINK_THRESHOLD = .09
+WINK_THRESHOLD = .07
 WINK_FRAMES_REQUIRED = 2
 
 SMOOTHING = 0.3
@@ -181,6 +183,7 @@ def main() -> None:
     cap = cv2.VideoCapture(CAMERA)
 
     if not cap.isOpened():
+        # If you get this, try switching CAMERA to be 0
         print("Error: Could not open webcam")
         exit()
 
@@ -195,7 +198,8 @@ def main() -> None:
         if not flags.calibrating and not started_speech_thread:
             speech_thread.start()
             started_speech_thread = True
-        #
+
+        # Process commands in the queue
         for _ in range(COMMANDS_PER_FRAME): # limit commands per frame
             if command_queue.empty():
                 break
@@ -230,53 +234,32 @@ def main() -> None:
                 y = int(landmark.y * h)
                 cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)"""
 
+            # Main eye landmarks
             for l in EYE_MARKERS:
                 for landmark in l:
                     x = int(result.face_landmarks[0][landmark].x * w)
                     y = int(result.face_landmarks[0][landmark].y * h)
                     cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
 
-            # Markers for individual marker lists for debugging
-            """# Edges of left iris
-            for landmark in LEFT_IRIS:
-                x = int(result.face_landmarks[0][landmark].x * w)
-                y = int(result.face_landmarks[0][landmark].y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
-
-            # edges of right iris
-            for landmark in RIGHT_IRIS:
-                x = int(result.face_landmarks[0][landmark].x * w)
-                y = int(result.face_landmarks[0][landmark].y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)
-
-            # corners of the left eye
-            for landmark in LEFT_EYE_CORNERS:
-                x = int(result.face_landmarks[0][landmark].x * w)
-                y = int(result.face_landmarks[0][landmark].y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
-
-            # left eyelids
-            """for landmark in LEFT_EYE_LIDS:
-                x = int(result.face_landmarks[0][landmark].x * w)
-                y = int(result.face_landmarks[0][landmark].y * h)
-                cv2.circle(frame, (x, y), 1, (0, 255, 0), -1)"""
-
-            #center of eyes
+            # Center of eyes
             cv2.circle(frame, (get_center(LEFT_IRIS,result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)
             cv2.circle(frame, (get_center(RIGHT_IRIS, result.face_landmarks[0], w, h)), 1, (0, 255, 0), -1)
 
-
+            # Eye aspect ratio to see if eyes are closed
             left_EAR = calculate_EAR(result.face_landmarks[0], LEFT_EYE_CORNERS, LEFT_EYE_LIDS)
             right_EAR = calculate_EAR(result.face_landmarks[0], RIGHT_EYE_CORNERS, RIGHT_EYE_LIDS)
             # Convert eye position to screen position
             if len(avg_calibration) == 4 and not flags.calibrating:
                 both_closed = left_EAR < WINK_THRESHOLD and right_EAR < WINK_THRESHOLD
                 smooth_x, smooth_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-                if not both_closed:  # Dont moving during blinking
+                if not both_closed:  # Dont move during blinking
+                    # use both eyes when both are open
                     smooth_x, smooth_y = calculate_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
                 elif left_EAR < WINK_THRESHOLD and right_EAR > WINK_THRESHOLD:
+                    # use right eye if left is closed
                     smooth_x, smooth_y = calculate_right_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
                 elif left_EAR > WINK_THRESHOLD and right_EAR < WINK_THRESHOLD:
+                    # use left eye if right is closed
                     smooth_x, smooth_y = calculate_right_smoothed_position(result.face_landmarks, prev_x, prev_y, w, h)
 
                 if not both_closed:
@@ -285,21 +268,21 @@ def main() -> None:
 
 
             # Winking check
-            if left_EAR < WINK_THRESHOLD < right_EAR:
+            if left_EAR < WINK_THRESHOLD < right_EAR: # Left wink for left click
                 flags.left_wink_frames += 1
-                if flags.left_wink_frames == WINK_FRAMES_REQUIRED:
+                if flags.left_wink_frames == WINK_FRAMES_REQUIRED: # needs to happen over several frames to prevent accidental wink triggers
                     print("left wink")
                     io.left_click()
-            elif left_EAR > WINK_THRESHOLD > right_EAR:
+            elif left_EAR > WINK_THRESHOLD > right_EAR: # Right wink for right click
                 flags.right_wink_frames += 1
-                if flags.right_wink_frames == WINK_FRAMES_REQUIRED:
+                if flags.right_wink_frames == WINK_FRAMES_REQUIRED: # needs to happen over several frames to prevent accidental wink triggers
                     print("right wink")
                     io.right_click()
             else:
                 flags.left_wink_frames = 0
                 flags.right_wink_frames = 0
 
-        # Show window
+        # Show window with camera and tracking dots shown
         cv2.imshow("Face Landmarker", frame)
 
         #Keyboard inputs
@@ -307,7 +290,7 @@ def main() -> None:
         if key == 27: # Quit
             flags.end_loop = True # to kill speech commands
             break
-        elif key == ord("c") and flags.calibrating: #Add calibration point
+        elif key == ord("c") and flags.calibrating: # Add a start_calibrationcalibration point
             if result.face_landmarks:
                 x, y = get_center(RIGHT_IRIS,result.face_landmarks[0], w, h)
                 right_cord = Coordinate(x, y)

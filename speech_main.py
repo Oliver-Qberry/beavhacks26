@@ -1,6 +1,7 @@
+# This is the original speech commands file that was used for
+# testing a development before integrating with the eye tracking
+
 import speech_recognition as sr
-# Using whisper
-import os
 import string
 from rapidfuzz import fuzz
 from flags import Flags
